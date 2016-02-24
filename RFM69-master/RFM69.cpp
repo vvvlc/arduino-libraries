@@ -530,7 +530,7 @@ void RFM69::readAllRegs()
   long freqCenter = 0;
 #endif
   
-  SER.println("Address - HEX - BIN");
+  //SER.println("Address - HEX - BIN");
   for (uint8_t regAddr = 1; regAddr <= 0x4F; regAddr++)
   {
     select();
