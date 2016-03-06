@@ -215,24 +215,13 @@ bool RFM69::canSend()
   return false;
 }
 
-void _Blink(byte PIN, int DELAY_MS)
-{
-  pinMode(PIN, OUTPUT);
-  digitalWrite(PIN,HIGH);
-  delay(DELAY_MS);
-  digitalWrite(PIN,LOW);
-}
-
-
 void RFM69::send(uint8_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK)
 {
   writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   uint32_t now = millis();
-  while (!canSend() && millis() - now < RF69_CSMA_LIMIT_MS) { receiveDone(); _Blink(8,100);}
+  while (!canSend() && millis() - now < RF69_CSMA_LIMIT_MS) receiveDone();
   sendFrame(toAddress, buffer, bufferSize, requestACK, false);
 }
-
-
 
 // to increase the chance of getting a packet across, call this function instead of send
 // and it handles all the ACK requesting/retrying for you :)
@@ -250,11 +239,11 @@ bool RFM69::sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferS
     {
       if (ACKReceived(toAddress))
       {
-        //SER.print(" ~ms:"); SER.print(millis() - sentTime);
+        //Serial.print(" ~ms:"); Serial.print(millis() - sentTime);
         return true;
       }
     }
-    //SER.print(" RETRY#"); SER.println(i + 1);
+    //Serial.print(" RETRY#"); Serial.println(i + 1);
   }
   return false;
 }
@@ -499,8 +488,6 @@ void RFM69::setCS(uint8_t newSPISlaveSelect) {
   pinMode(_slaveSelectPin, OUTPUT);
 }
 
-#define SER Serial1
-
 //for debugging
 #define REGISTER_DETAIL 0
 #if REGISTER_DETAIL
@@ -508,7 +495,7 @@ void RFM69::setCS(uint8_t newSPISlaveSelect) {
 // replace Serial.print("string") with SerialPrint("string")
 #define SerialPrint(x) SerialPrint_P(PSTR(x))
 void SerialWrite ( uint8_t c ) {
-    SER.write ( c );
+    Serial.write ( c );
 }
 
 void SerialPrint_P(PGM_P str, void (*f)(uint8_t) = SerialWrite ) {
@@ -530,7 +517,7 @@ void RFM69::readAllRegs()
   long freqCenter = 0;
 #endif
   
-  //SER.println("Address - HEX - BIN");
+  //Serial.println("Address - HEX - BIN");
   for (uint8_t regAddr = 1; regAddr <= 0x4F; regAddr++)
   {
     select();
@@ -538,11 +525,11 @@ void RFM69::readAllRegs()
     regVal = SPI.transfer(0);
     unselect();
 
-    SER.print(regAddr, HEX);
-    SER.print(" - ");
-    SER.print(regVal,HEX);
-    SER.print(" - ");
-    SER.println(regVal,BIN);
+    //Serial.print(regAddr, HEX);
+    //Serial.print(" - ");
+    //Serial.print(regVal,HEX);
+    //Serial.print(" - ");
+    //Serial.println(regVal,BIN);
 
 #if REGISTER_DETAIL 
     switch ( regAddr ) 
@@ -580,7 +567,7 @@ void RFM69::readAllRegs()
             } else if ( capVal = 0b100 ) {
                 SerialPrint ( "100 -> Receiver Mode (RX)\n" );
             } else {
-                SER.print( capVal, BIN );
+                //Serial.print( capVal, BIN );
                 SerialPrint ( " -> RESERVED\n" );
             }
             SerialPrint ( "\n" );
@@ -657,7 +644,7 @@ void RFM69::readAllRegs()
             bitRate |= regVal;
             SerialPrint ( "Bit Rate (Chip Rate when Manchester encoding is enabled)\nBitRate : ");
             unsigned long val = 32UL * 1000UL * 1000UL / bitRate;
-            SER.println( val );
+            //Serial.println( val );
             SerialPrint( "\n" );
             break;
         }
@@ -671,7 +658,7 @@ void RFM69::readAllRegs()
             freqDev |= regVal;
             SerialPrint( "Frequency deviation\nFdev : " );
             unsigned long val = 61UL * freqDev;
-            SER.println( val );
+            //Serial.println( val );
             SerialPrint ( "\n" );
             break;
         }
@@ -692,7 +679,7 @@ void RFM69::readAllRegs()
             freqCenter = freqCenter | regVal;
             SerialPrint ( "RF Carrier frequency\nFRF : " );
             unsigned long val = 61UL * freqCenter;
-            SER.println( val );
+            //Serial.println( val );
             SerialPrint( "\n" );
             break;
         }

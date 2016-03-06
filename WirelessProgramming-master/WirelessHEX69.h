@@ -6,6 +6,7 @@
 // **********************************************************************************
 // Copyright Felix Rusu, LowPowerLab.com
 // Library and code by Felix Rusu - felix@lowpowerlab.com
+// Added changes for FOTA for Funky V3 by Vitek VLCEK Copyright Vitek VLCEK
 // **********************************************************************************
 // License
 // **********************************************************************************
