@@ -41,6 +41,7 @@ volatile uint8_t RFM69::PAYLOADLEN;
 volatile uint8_t RFM69::ACK_REQUESTED;
 volatile uint8_t RFM69::ACK_RECEIVED; // should be polled immediately after sending a packet with ACK request
 volatile int16_t RFM69::RSSI;          // most accurate RSSI during reception (closest to the reception)
+volatile bool RFM69::_inISR;
 RFM69* RFM69::selfPointer;
 
 bool RFM69::initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
@@ -109,6 +110,7 @@ bool RFM69::initialize(uint8_t freqBand, uint8_t nodeID, uint8_t networkID)
   while (((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00) && millis()-start < timeout); // wait for ModeReady
   if (millis()-start >= timeout)
     return false;
+  _inISR = false;
   attachInterrupt(_interruptNum, RFM69::isr0, RISING);
 
   selfPointer = this;
@@ -268,6 +270,7 @@ void RFM69::sendACK(const void* buffer, uint8_t bufferSize) {
   writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   uint32_t now = millis();
   while (!canSend() && millis() - now < RF69_CSMA_LIMIT_MS) receiveDone();
+  SENDERID = sender;    // TWS: Restore SenderID after it gets wiped out by receiveDone()
   sendFrame(sender, buffer, bufferSize, false, true);
   RSSI = _RSSI; // restore payload RSSI
 }
@@ -352,7 +355,7 @@ void RFM69::interruptHandler() {
 }
 
 // internal function
-void RFM69::isr0() { selfPointer->interruptHandler(); }
+void RFM69::isr0() { _inISR = true; selfPointer->interruptHandler(); _inISR = false; }
 
 // internal function
 void RFM69::receiveBegin() {
@@ -439,9 +442,11 @@ void RFM69::writeReg(uint8_t addr, uint8_t value)
 // select the RFM69 transceiver (save SPI settings, set CS low)
 void RFM69::select() {
   noInterrupts();
+#if defined (SPCR) && defined (SPSR)
   // save current SPI settings
   _SPCR = SPCR;
   _SPSR = SPSR;
+#endif
   // set RFM69 SPI settings
   SPI.setDataMode(SPI_MODE0);
   SPI.setBitOrder(MSBFIRST);
@@ -453,9 +458,11 @@ void RFM69::select() {
 void RFM69::unselect() {
   digitalWrite(_slaveSelectPin, HIGH);
   // restore SPI settings to what they were before talking to RFM69
+#if defined (SPCR) && defined (SPSR)
   SPCR = _SPCR;
   SPSR = _SPSR;
-  interrupts();
+#endif
+  maybeInterrupts();
 }
 
 // true  = disable filtering to capture all frames on network
@@ -517,7 +524,7 @@ void RFM69::readAllRegs()
   long freqCenter = 0;
 #endif
   
-  //Serial.println("Address - HEX - BIN");
+  Serial.println("Address - HEX - BIN");
   for (uint8_t regAddr = 1; regAddr <= 0x4F; regAddr++)
   {
     select();
@@ -525,11 +532,11 @@ void RFM69::readAllRegs()
     regVal = SPI.transfer(0);
     unselect();
 
-    //Serial.print(regAddr, HEX);
-    //Serial.print(" - ");
-    //Serial.print(regVal,HEX);
-    //Serial.print(" - ");
-    //Serial.println(regVal,BIN);
+    Serial.print(regAddr, HEX);
+    Serial.print(" - ");
+    Serial.print(regVal,HEX);
+    Serial.print(" - ");
+    Serial.println(regVal,BIN);
 
 #if REGISTER_DETAIL 
     switch ( regAddr ) 
@@ -567,7 +574,7 @@ void RFM69::readAllRegs()
             } else if ( capVal = 0b100 ) {
                 SerialPrint ( "100 -> Receiver Mode (RX)\n" );
             } else {
-                //Serial.print( capVal, BIN );
+                Serial.print( capVal, BIN );
                 SerialPrint ( " -> RESERVED\n" );
             }
             SerialPrint ( "\n" );
@@ -644,7 +651,7 @@ void RFM69::readAllRegs()
             bitRate |= regVal;
             SerialPrint ( "Bit Rate (Chip Rate when Manchester encoding is enabled)\nBitRate : ");
             unsigned long val = 32UL * 1000UL * 1000UL / bitRate;
-            //Serial.println( val );
+            Serial.println( val );
             SerialPrint( "\n" );
             break;
         }
@@ -658,7 +665,7 @@ void RFM69::readAllRegs()
             freqDev |= regVal;
             SerialPrint( "Frequency deviation\nFdev : " );
             unsigned long val = 61UL * freqDev;
-            //Serial.println( val );
+            Serial.println( val );
             SerialPrint ( "\n" );
             break;
         }
@@ -679,7 +686,7 @@ void RFM69::readAllRegs()
             freqCenter = freqCenter | regVal;
             SerialPrint ( "RF Carrier frequency\nFRF : " );
             unsigned long val = 61UL * freqCenter;
-            //Serial.println( val );
+            Serial.println( val );
             SerialPrint( "\n" );
             break;
         }
@@ -782,4 +789,10 @@ void RFM69::rcCalibration()
 {
   writeReg(REG_OSC1, RF_OSC1_RCCAL_START);
   while ((readReg(REG_OSC1) & RF_OSC1_RCCAL_DONE) == 0x00);
+}
+
+inline void RFM69::maybeInterrupts()
+{
+  // Only reenable interrupts if we're not being called from the ISR
+  if (!_inISR) interrupts();
 }

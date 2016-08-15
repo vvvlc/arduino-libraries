@@ -1,4 +1,3 @@
-// **********************************************************************************************************
 // GarageMote garage door controller base receiver sketch that works with Moteinos equipped with HopeRF RFM69W/RFM69HW
 // Can be adapted to use Moteinos using RFM12B
 // This is the sketch for the base, not the controller itself, and meant as another example on how to use a
@@ -24,11 +23,11 @@
 #define NODEID          1
 #define NETWORKID     200
 #define FREQUENCY     RF69_915MHZ //Match this with the version of your Moteino! (others: RF69_433MHZ, RF69_868MHZ)
-#define ENCRYPTKEY    "thisIsEncryptKey" //has to be same 16 characters/bytes on all nodes, not more not less!
+#define ENCRYPTKEY    "sampleEncryptKey" //has to be same 16 characters/bytes on all nodes, not more not less!
 #define IS_RFM69HW    //uncomment only for RFM69HW! Leave out if you have RFM69W!
 #define LED             9
 #define FLASH_CS        8
-#define SERIAL_BAUD 115200
+#define SERIAL_BAUD  19200
 #define SERIAL_EN     //comment out if you don't want any serial verbose output
 #define ACK_TIME       30  // # of ms to wait for an ack
 #define BACKLIGHTPIN    5 //3=R,5=G,6=B

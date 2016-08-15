@@ -45,6 +45,9 @@
 #elif defined(__AVR_ATmega32U4__)
   #define RF69_IRQ_PIN          3
   #define RF69_IRQ_NUM          0
+#elif defined(__arm__)//Use pin 10 or any pin you want
+  #define RF69_IRQ_PIN          10
+  #define RF69_IRQ_NUM          10
 #else 
   #define RF69_IRQ_PIN          2
   #define RF69_IRQ_NUM          0  
@@ -128,6 +131,7 @@ class RFM69 {
     static void isr0();
     void virtual interruptHandler();
     virtual void interruptHook(uint8_t CTLbyte) {};
+    static volatile bool _inISR;
     virtual void sendFrame(uint8_t toAddress, const void* buffer, uint8_t size, bool requestACK=false, bool sendACK=false);
 
     static RFM69* selfPointer;
@@ -138,14 +142,17 @@ class RFM69 {
     bool _promiscuousMode;
     uint8_t _powerLevel;
     bool _isRFM69HW;
+#if defined (SPCR) && defined (SPSR)
     uint8_t _SPCR;
     uint8_t _SPSR;
+#endif
 
     virtual void receiveBegin();
     virtual void setMode(uint8_t mode);
     virtual void setHighPowerRegs(bool onOff);
     virtual void select();
     virtual void unselect();
+    inline void maybeInterrupts();
 };
 
 #endif
